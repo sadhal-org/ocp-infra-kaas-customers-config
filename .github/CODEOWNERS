@@ -1,0 +1,12 @@
+# default ownership - platform team
+* @sadhal
+
+/dev/**/aimlinfra/*.values.yaml @myorg/aimlinfra
+/dev/**/ipapcip/*.values.yaml @myorg/ipapcip
+/dev/**/itom/*.values.yaml @myorg/itom
+
+/test/**/aimlinfra/*.values.yaml @myorg/aimlinfra
+/test/**/ipapcip/*.values.yaml @myorg/ipapcip
+/test/**/itom/*.values.yaml @myorg/itom
+
+/prod/**/**/*.values.yaml @myorg/mysreteam
