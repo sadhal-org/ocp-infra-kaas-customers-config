@@ -1,3 +1,6 @@
+replicaCount: 4
+
 resources:
   requests:
-    cpu: 100m
+    cpu: 44m
+
