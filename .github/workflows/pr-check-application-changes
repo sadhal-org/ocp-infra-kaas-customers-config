@@ -4,7 +4,10 @@ on:
   pull_request:
     branches: [ main ]                # where
     types: [opened, reopened]         # when
-    paths: ['**/*.application.yaml']  # what - includes change on this file
+    paths:                            # what - includes change on this file
+      - '/dev/**/*.application.yaml'
+      - '/test/**/*.application.yaml'  
+      - '/prod/**/*.application.yaml'  
 
 jobs:
   argocd-application-control:
