@@ -2,12 +2,8 @@ name: pr-check-application-changes
 
 on:
   pull_request:
-    branches: [ main ]                # where
-    types: [opened, reopened]         # when
-    paths:                            # what - includes change on this file
-      - '/dev/**/*.application.yaml'
-      - '/test/**/*.application.yaml'  
-      - '/prod/**/*.application.yaml'  
+    branches: [main]                        # where
+    types: [opened, reopened, synchronize]  # when
 
 jobs:
   argocd-application-control:
@@ -26,11 +22,14 @@ jobs:
         with:
           fetch-depth: 0  # Fetch all history for `git diff`
 
-      - name: Get changed files
+      - name: Get changed files matching pattern
         id: changed-files
         uses: tj-actions/changed-files@v44
         with:
-          files: '**/*.application.yaml'
+          files: |
+            /dev/**/*.application.yaml
+            /test/**/*.application.yaml
+            /prod/**/*.application.yaml
           since_last_remote_commit: true
 
       - name: Check if PR author is a maintainer in the platform team
