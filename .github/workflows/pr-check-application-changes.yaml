@@ -8,8 +8,8 @@ on:
 jobs:
   argocd-application-control:
     runs-on: ubuntu-latest
-    # permissions:
-    #   contents: write
+    permissions:
+      contents: write
     steps:
       - name: Information
         run: |
