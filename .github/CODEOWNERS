@@ -1,12 +1,12 @@
 # default ownership - platform team
-* @sadhal
+* @sadhal-org/k8s-platform-team
 
-/dev/**/aimlinfra/*.values.yaml @myorg/aimlinfra
-/dev/**/ipapcip/*.values.yaml @myorg/ipapcip
-/dev/**/itom/*.values.yaml @myorg/itom
+/dev/**/aimlinfra/*.values.yaml @sadhal-org/aimlinfra-team
+/dev/**/ipapcip/*.values.yaml @sadhal-org/ipapcip-team
+/dev/**/itom/*.values.yaml @sadhal-org/itom-team
 
-/test/**/aimlinfra/*.values.yaml @myorg/aimlinfra
-/test/**/ipapcip/*.values.yaml @myorg/ipapcip
-/test/**/itom/*.values.yaml @myorg/itom
+/test/**/aimlinfra/*.values.yaml @sadhal-org/aimlinfra-team
+/test/**/ipapcip/*.values.yaml @sadhal-org/ipapcip-team
+/test/**/itom/*.values.yaml @sadhal-org/itom-team
 
-/prod/**/**/*.values.yaml @myorg/mysreteam
+/prod/**/**/*.values.yaml @sadhal-org/k8s-sre-team
