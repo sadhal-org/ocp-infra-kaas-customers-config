@@ -6,7 +6,7 @@ metadata:
 spec:
   project: kaas-customers
   source:
-    repoURL: "oci://ghcr.io/sadhal"
+    repoURL: "oci://ghcr.io/sadhal-org"
     chart: "aimlinfra-kuberay-operator"
     targetRevision: "0.1.3"   # här styrs promotion; kaas-customer-team ändrar detta fält i config-repo
     helm:
