@@ -57,6 +57,7 @@ jobs:
             // Check if author is a member of the platform team
             let isTeamMember = false;
             try {
+              console.log(`context.repo: ${context.repo}, team_slug: process.env.TEAM_SLUG`);
               const { data: teamMembers } = await github.rest.teams.listMembersInOrg({
                 org: context.repo.owner,
                 team_slug: process.env.TEAM_SLUG,
