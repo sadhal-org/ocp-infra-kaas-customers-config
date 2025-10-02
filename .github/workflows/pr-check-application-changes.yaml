@@ -27,7 +27,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const teamSlug = "admin";
+            const teamSlug = "k8s-platform-team";
             const org = context.repo.owner;
             const username = "${{ steps.author.outputs.author }}";
 
@@ -39,6 +39,7 @@ jobs:
               });
               return res.data.state === "active";
             } catch (err) {
+              console.log(err);
               return false;
             }
 
