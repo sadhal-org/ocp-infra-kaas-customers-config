@@ -16,7 +16,7 @@ jobs:
     # permissions:
     #   contents: write  
     env:
-      ADMINS: "sadhal"   # 🔑 Replace with actual GitHub usernames
+      ADMINS: "fejkuser" #"sadhal"   # 🔑 Replace with actual GitHub usernames
 
     steps:
       - name: Check out repo
