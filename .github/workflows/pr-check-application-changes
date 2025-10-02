@@ -1,0 +1,83 @@
+name: pr-check-application-changes
+
+on:
+  pull_request:
+    branches: [ main ]                # where
+    types: [opened, reopened]         # when
+    paths: ['**/*.application.yaml']  # what - includes change on this file
+
+jobs:
+  argocd-application-control:
+    runs-on: ubuntu-latest
+    # permissions:
+    #   contents: write
+    steps:
+      - name: Information
+        run: |
+          echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
+          echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
+          echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for `git diff`
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v44
+        with:
+          files: '**/*.application.yaml'
+          since_last_remote_commit: true
+
+      - name: Check if PR author is a maintainer in the platform team
+        id: check-maintainer
+        uses: actions/github-script@v6
+        env:
+          TEAM_SLUG: k8s-platform-team  # Replace with your team slug
+        with:
+          script: |
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+            const author = pr.user.login;
+
+            // Check if author is a maintainer of the repo
+            const { data: collaborator } = await github.rest.repos.getCollaboratorPermissionLevel({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              username: author,
+            });
+            const isMaintainer = collaborator.permission === 'admin' || collaborator.permission === 'maintain';
+
+            // Check if author is a member of the platform team
+            let isTeamMember = false;
+            try {
+              const { data: teamMembers } = await github.rest.teams.listMembersInOrg({
+                org: context.repo.owner,
+                team_slug: process.env.TEAM_SLUG,
+              });
+              isTeamMember = teamMembers.some(member => member.login === author);
+            } catch (e) {
+              console.log(`Team not found or error: ${e.message}`);
+            }
+
+            const isAllowed = isMaintainer && isTeamMember;
+            core.setOutput('is_allowed', isAllowed);
+
+      - name: Check for unauthorized changes (if not allowed)
+        if: steps.check-maintainer.outputs.is_allowed != 'true'
+        run: |
+          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+            echo "Checking $file..."
+            diff=$(git diff HEAD~1 -- "$file")
+            unauthorized_changes=$(echo "$diff" | grep -E '^\+' | grep -v 'targetRevision:' | grep -v '^\+$')
+
+            if [ -n "$unauthorized_changes" ]; then
+              echo "❌::error::Unauthorized changes detected in $file:"
+              echo "$unauthorized_changes"
+              exit 1
+            fi
+          done
