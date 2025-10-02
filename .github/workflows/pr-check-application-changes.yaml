@@ -1,86 +1,97 @@
-name: pr-check-application-changes
+name: Validate application.yaml changes
 
 on:
   pull_request:
-    branches: [main]                        # where
-    types: [opened, reopened, synchronize]  # when
+    branches:
+      - main
+    types: [opened, reopened, synchronize]
+    paths:
+      - 'dev/**.application.yaml'
+      - 'test/**.application.yaml'
+      - 'prod/**.application.yaml'
 
 jobs:
-  argocd-application-control:
+  validate-yaml:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - name: Information
-        run: |
-          echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event."
-          echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
-          echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
-
-      - name: Checkout code
+      - name: Check out repo
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Fetch all history for `git diff`
 
-      - name: Get changed files matching pattern
-        id: changed-files
-        uses: tj-actions/changed-files@v44
-        with:
-          files: |
-            /dev/**/*.application.yaml
-            /test/**/*.application.yaml
-            /prod/**/*.application.yaml
-          since_last_remote_commit: true
+      - name: Get PR author
+        id: author
+        run: echo "author=${{ github.event.pull_request.user.login }}" >> $GITHUB_OUTPUT
 
-      - name: Check if PR author is a maintainer in the platform team
-        id: check-maintainer
-        uses: actions/github-script@v6
-        env:
-          TEAM_SLUG: k8s-platform-team  # Replace with your team slug
+      - name: Check if PR author is admin
+        id: is_admin
+        uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const { data: pr } = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: context.issue.number,
-            });
-            const author = pr.user.login;
+            const teamSlug = "admin";
+            const org = context.repo.owner;
+            const username = "${{ steps.author.outputs.author }}";
 
-            // Check if author is a maintainer of the repo
-            const { data: collaborator } = await github.rest.repos.getCollaboratorPermissionLevel({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              username: author,
-            });
-            const isMaintainer = collaborator.permission === 'admin' || collaborator.permission === 'maintain';
-
-            // Check if author is a member of the platform team
-            let isTeamMember = false;
             try {
-              console.log(context.repo);
-              const { data: teamMembers } = await github.rest.teams.listMembersInOrg({
-                org: context.repo.owner,
-                team_slug: process.env.TEAM_SLUG,
+              const res = await github.rest.teams.getMembershipForUserInOrg({
+                org,
+                team_slug: teamSlug,
+                username,
               });
-              isTeamMember = teamMembers.some(member => member.login === author);
-            } catch (e) {
-              console.log(`Team not found or error: ${e.message}`);
+              return res.data.state === "active";
+            } catch (err) {
+              return false;
             }
 
-            const isAllowed = isMaintainer && isTeamMember;
-            core.setOutput('is_allowed', isAllowed);
-
-      - name: Check for unauthorized changes (if not allowed)
-        if: steps.check-maintainer.outputs.is_allowed != 'true'
+      - name: Get list of changed files
+        id: changed-files
         run: |
-          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
-            echo "Checking $file..."
-            diff=$(git diff HEAD~1 -- "$file")
-            unauthorized_changes=$(echo "$diff" | grep -E '^\+' | grep -v 'targetRevision:' | grep -v '^\+$')
+          echo "files=$(gh api repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files --jq '.[].filename' | tr '\n' ' ')" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-            if [ -n "$unauthorized_changes" ]; then
-              echo "❌::error::Unauthorized changes detected in $file:"
-              echo "$unauthorized_changes"
-              exit 1
+      - name: Validate changes in application.yaml
+        if: steps.is_admin.outputs.result != 'true'
+        run: |
+          set -e
+          invalid_files=""
+          for file in ${{ steps.changed-files.outputs.files }}; do
+            if [[ $file == *".application.yaml" ]]; then
+              echo "Checking file: $file"
+              git fetch origin ${{ github.event.pull_request.base.ref }}
+              base_branch="origin/${{ github.event.pull_request.base.ref }}"
+              
+              # Diff excluding targetRevision
+              diff_output=$(git diff $base_branch -- "$file" | grep -v "targetRevision" || true)
+              if [[ -n "$diff_output" ]]; then
+                echo "❌ Invalid change detected in $file"
+                invalid_files="$invalid_files $file"
+              fi
             fi
           done
+
+          if [[ -n "$invalid_files" ]]; then
+            echo "invalid_files=$invalid_files" >> $GITHUB_ENV
+            exit 1
+          fi
+
+      - name: Comment on PR if validation failed
+        if: failure() && steps.is_admin.outputs.result != 'true'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const invalidFiles = process.env.invalid_files || "";
+            const body = `
+❌ Validation failed: Only \`targetRevision\` can be modified in \`*.application.yaml\`.
+
+The following files had disallowed changes:
+${invalidFiles.split(" ").filter(f => f).map(f => `- \`${f}\``).join("\n")}
+
+Please update your PR so only \`targetRevision\` changes are included.
+`;
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            });
