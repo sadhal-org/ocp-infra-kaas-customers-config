@@ -2,13 +2,13 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: aimlinfra-kuberay-operator
-  namespace: ocp-infra-kaas-customers-applications
+  namespace: skvinfra-argocd-applications
 spec:
-  project: default
+  project: kaas-customers
   source:
     repoURL: "oci://ghcr.io/sadhal"
     chart: "aimlinfra-kuberay-operator"
-    targetRevision: "0.1.3"   # här styrs promotion; CI ändrar detta fält i config-repo
+    targetRevision: "0.1.3"   # här styrs promotion; kaas-customer-team ändrar detta fält i config-repo
     helm:
       valueFiles:
         - aimlinfra-kuberay-operator.values.yaml
