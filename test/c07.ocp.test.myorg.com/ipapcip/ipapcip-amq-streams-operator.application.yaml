@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: "oci://ghcr.io/sadhal-org"
     chart: "ipapcip-amq-streams-operator"
-    targetRevision: "0.1.1"   # här styrs promotion; kaas-customer-team ändrar detta fält i config-repo
+    targetRevision: "0.1.2"   # här styrs promotion; kaas-customer-team ändrar detta fält i config-repo
     helm:
       valueFiles:
         - ipapcip-amq-streams-operator.values.yaml
